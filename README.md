@@ -18,7 +18,7 @@ var deleteEmpty = require('delete-empty');
 
 ## API
 
-Given the directory structure, the **highlighted directories** would be deleted.
+Given the following directory structure, the **highlighted directories** would be deleted.
 
 ```diff
 foo/
