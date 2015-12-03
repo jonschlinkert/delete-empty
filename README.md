@@ -20,7 +20,7 @@ var deleteEmpty = require('delete-empty');
 
 Given the directory structure, the **highlighted directories** would be deleted.
 
-```
+```diff
 foo/
 └─┬ a/
 -  ├── aa/
