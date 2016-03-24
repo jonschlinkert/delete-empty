@@ -39,12 +39,12 @@ require = fn;
 function tryReaddir(dir) {
   try {
     return fs.readdirSync(dir);
-  } catch(err) {}
+  } catch (err) {}
   return [];
 }
 
 utils.empty = function(dir, cb) {
-  fs.readdir(dir, function (err, files) {
+  fs.readdir(dir, function(err, files) {
     if (err) {
       // if it doesn't exist, we don't
       // need to do anything
@@ -57,7 +57,7 @@ utils.empty = function(dir, cb) {
   });
 };
 
-utils.emptySync = function (dir) {
+utils.emptySync = function(dir) {
   try {
     var files = tryReaddir(dir);
     return files.length === 0;
