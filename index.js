@@ -10,9 +10,14 @@
 var path = require('path');
 var utils = require('./utils');
 
-function deleteEmpty(cwd, cb) {
+function deleteEmpty(cwd, options, cb) {
+  if(cb === undefined) {
+    cb = options;
+    options = {};
+  }
+
   if (utils.emptySync(cwd)) {
-    utils.del(cwd, function(err) {
+    utils.del(cwd, options, function(err) {
       if (err) return cb(err);
       return cb(null, [cwd]);
     });
@@ -33,7 +38,7 @@ function deleteEmpty(cwd, cb) {
           return next(null, acc);
         }
 
-        utils.del(dir, function(err) {
+        utils.del(dir, options, function(err) {
           if (err) return next(err);
 
           acc.push(dir);
@@ -44,9 +49,9 @@ function deleteEmpty(cwd, cb) {
   });
 }
 
-deleteEmpty.sync = function(cwd) {
+deleteEmpty.sync = function(cwd, options) {
   if (utils.emptySync(cwd)) {
-    utils.del.sync(cwd);
+    utils.del.sync(cwd, options);
     return [cwd];
   }
 
@@ -57,7 +62,7 @@ deleteEmpty.sync = function(cwd) {
   while (len--) {
     var dir = path.join(cwd, dirs[len]);
     if (utils.emptySync(dir)) {
-      utils.del.sync(dir);
+      utils.del.sync(dir, options);
       res.push(dir);
     }
   }
