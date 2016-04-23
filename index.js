@@ -29,7 +29,7 @@ function deleteEmpty(cwd, options, cb) {
       err.code = 'glob';
       return cb(err);
     }
-    utils.async.reduce(files, [], function(acc, filename, next) {
+    utils.async.reduceRight(files, [], function(acc, filename, next) {
       var dir = path.join(cwd, filename);
 
       utils.empty(dir, function(err, isEmpty) {

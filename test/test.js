@@ -31,6 +31,7 @@ describe('deleteEmpty', function() {
     it('should delete nested directories', function(cb) {
       deleteEmpty('test/temp', function(err, deleted) {
         if (err) return cb(err);
+        assert(!fs.existsSync('test/temp/a/aa/aaa/aaaa'));
         assert(!fs.existsSync('test/temp/a/aa/aaa'));
         assert(!fs.existsSync('test/temp/b'));
         assert(!fs.existsSync('test/temp/c'));
@@ -41,7 +42,12 @@ describe('deleteEmpty', function() {
     it('should return the array of deleted directories', function(cb) {
       deleteEmpty('test/temp', function(err, deleted) {
         if (err) return cb(err);
-        assert.deepEqual(deleted, ['test/temp/a/aa/aaa/', 'test/temp/b/', 'test/temp/c/']);
+        assert.deepEqual(deleted.sort(), [
+          'test/temp/a/aa/aaa/aaaa/',
+          'test/temp/a/aa/aaa/',
+          'test/temp/b/',
+          'test/temp/c/'
+        ].sort());
         cb();
       });
     });
@@ -56,6 +62,7 @@ describe('deleteEmpty', function() {
 
     it('should delete nested directories', function(cb) {
       deleteEmpty.sync('test/temp');
+      assert(!fs.existsSync('test/temp/a/aa/aaa/aaaa'));
       assert(!fs.existsSync('test/temp/a/aa/aaa'));
       assert(!fs.existsSync('test/temp/b'));
       assert(!fs.existsSync('test/temp/c'));
@@ -64,7 +71,12 @@ describe('deleteEmpty', function() {
 
     it('should return the array of deleted directories', function(cb) {
       var deleted = deleteEmpty.sync('test/temp');
-      assert.deepEqual(deleted.sort(), ['test/temp/a/aa/aaa/', 'test/temp/b/', 'test/temp/c/'].sort());
+      assert.deepEqual(deleted.sort(), [
+        'test/temp/a/aa/aaa/aaaa/',
+        'test/temp/a/aa/aaa/',
+        'test/temp/b/',
+        'test/temp/c/'
+      ].sort());
       cb();
     });
   });
