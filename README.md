@@ -23,14 +23,15 @@ Given the following directory structure, the **highlighted directories** would b
 ```diff
 foo/
 └─┬ a/
--  ├── aa/
-  ├── bb/
+- ├── aa/
+  ├─┬ bb/
   │ └─┬ bbb/
   │   ├── one.txt
   │   └── two.txt
--  ├── cc/
--  ├ b/
--  └ c/
+- ├─┬ cc/
+- │ └── ccc/
+- ├ b/
+- └ c/
 ```
 
 **async**
