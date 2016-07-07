@@ -23,6 +23,8 @@ function tryReaddir(dir) {
 
 utils.empty = function(dir, cb) {
   fs.readdir(dir, function(err, files) {
+    // Ignore .DS_Store on MacOS
+    files.splice(files.indexOf('.DS_Store'), 1);
     if (err) {
       // if it doesn't exist, we don't
       // need to do anything
