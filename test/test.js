@@ -4,9 +4,12 @@ require('mocha');
 var fs = require('fs');
 var path = require('path');
 var assert = require('assert');
+var rimraf = require('rimraf');
 var copy = require('./support/copy');
-var del = require('delete');
 var deleteEmpty = require('..');
+
+var tests = path.join.bind(path, __dirname);
+var fixtures = path.join.bind(path, tests('fixtures'));
 
 describe('deleteEmpty', function() {
   beforeEach(function(cb) {
@@ -14,13 +17,17 @@ describe('deleteEmpty', function() {
   });
 
   afterEach(function(cb) {
-    del('test/temp', cb);
+    rimraf('test/temp', cb);
   });
 
   describe('async', function(cb) {
     it('should delete the given cwd if empty', function(cb) {
+
       deleteEmpty('test/temp/b', function(err, deleted) {
-        if (err) return cb(err);
+        if (err) {
+          cb(err);
+          return;
+        }
         fs.exists('test/temp/b', function(exists) {
           assert(!exists);
           cb();
@@ -30,8 +37,10 @@ describe('deleteEmpty', function() {
 
     it('should delete nested directories', function(cb) {
       deleteEmpty('test/temp', function(err, deleted) {
-        if (err) return cb(err);
-        assert(!fs.existsSync('test/temp/a/aa/aaa/aaaa'));
+        if (err) {
+          cb(err);
+          return;
+        }
         assert(!fs.existsSync('test/temp/a/aa/aaa'));
         assert(!fs.existsSync('test/temp/b'));
         assert(!fs.existsSync('test/temp/c'));
@@ -41,12 +50,16 @@ describe('deleteEmpty', function() {
 
     it('should return the array of deleted directories', function(cb) {
       deleteEmpty('test/temp', function(err, deleted) {
-        if (err) return cb(err);
+        if (err) {
+          cb(err);
+          return;
+        }
+
         assert.deepEqual(deleted.sort(), [
-          'test/temp/a/aa/aaa/aaaa/',
-          'test/temp/a/aa/aaa/',
-          'test/temp/b/',
-          'test/temp/c/'
+          'test/temp/a/aa/aaa/aaaa',
+          'test/temp/a/aa/aaa',
+          'test/temp/b',
+          'test/temp/c'
         ].sort());
         cb();
       });
@@ -72,10 +85,10 @@ describe('deleteEmpty', function() {
     it('should return the array of deleted directories', function(cb) {
       var deleted = deleteEmpty.sync('test/temp');
       assert.deepEqual(deleted.sort(), [
-        'test/temp/a/aa/aaa/aaaa/',
-        'test/temp/a/aa/aaa/',
-        'test/temp/b/',
-        'test/temp/c/'
+        'test/temp/a/aa/aaa/aaaa',
+        'test/temp/a/aa/aaa',
+        'test/temp/b',
+        'test/temp/c'
       ].sort());
       cb();
     });

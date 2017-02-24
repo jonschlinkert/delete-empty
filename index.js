@@ -1,73 +1,144 @@
 /*!
  * delete-empty <https://github.com/jonschlinkert/delete-empty>
  *
- * Copyright (c) 2015, Jon Schlinkert.
- * Licensed under the MIT License.
+ * Copyright (c) 2015, 2017, Jon Schlinkert.
+ * Released under the MIT License.
  */
 
 'use strict';
 
+var fs = require('fs');
 var path = require('path');
-var utils = require('./utils');
+var relative = require('relative');
+var series = require('async-each-series');
+var rimraf = require('rimraf');
+var ok = require('log-ok');
 
-function deleteEmpty(cwd, options, cb) {
-  if(cb === undefined) {
-    cb = options;
+function deleteEmpty(cwd, options, done) {
+  if (typeof options === 'function') {
+    done = options;
     options = {};
   }
 
-  if (utils.emptySync(cwd)) {
-    utils.del(cwd, options, function(err) {
-      if (err) return cb(err);
-      return cb(null, [cwd]);
-    });
-    return;
+  if (typeof done !== 'function') {
+    throw new TypeError('expected callback to be a function');
   }
 
-  utils.glob('**/', {cwd: cwd}, function(err, files) {
-    if (err) {
-      err.code = 'glob';
-      return cb(err);
+  var dirname = path.resolve(cwd);
+  var opts = Object.assign({filter: keep}, options);
+  var acc = [];
+
+  function remove(filepath, cb) {
+    var dir = path.resolve(filepath);
+
+    if (dir.indexOf(dirname) !== 0) {
+      cb();
+      return;
     }
-    utils.async.reduceRight(files, [], function(acc, filename, next) {
-      var dir = path.join(cwd, filename);
 
-      utils.empty(dir, function(err, isEmpty) {
-        if (err) return next(err);
-        if (!isEmpty) {
-          return next(null, acc);
-        }
+    if (!isDirectory(dir)) {
+      cb();
+      return;
+    }
 
-        utils.del(dir, options, function(err) {
-          if (err) return next(err);
+    fs.readdir(dir, function(err, files) {
+      if (err) {
+        cb(err);
+        return;
+      }
 
-          acc.push(dir);
-          next(null, acc);
+      if (isEmpty(files, opts.filter)) {
+        rimraf(dir, function(err) {
+          if (err) {
+            cb(err);
+            return;
+          }
+
+          // display relative path for readability
+          var rel = relative(dir);
+          if (opts.silent !== true) {
+            ok('deleted:', rel);
+          }
+
+          acc.push(rel);
+          remove(path.dirname(dir), cb);
         });
-      });
-    }, cb);
+
+      } else {
+        series(files, function(file, next) {
+          remove(path.resolve(dir, file), next);
+        }, cb);
+      }
+    });
+  }
+
+  remove(dirname, function(err) {
+    done(err, acc);
   });
 }
 
 deleteEmpty.sync = function(cwd, options) {
-  if (utils.emptySync(cwd)) {
-    utils.del.sync(cwd, options);
-    return [cwd];
-  }
+  var dirname = path.resolve(cwd);
+  var opts = Object.assign({filter: keep}, options);
+  var acc = [];
 
-  var dirs = utils.glob.sync('**/', {cwd: cwd});
-  var len = dirs.length;
-  var res = [];
+  function remove(filepath) {
+    var dir = path.resolve(filepath);
+    if (dir.indexOf(dirname) !== 0) return;
 
-  while (len--) {
-    var dir = path.join(cwd, dirs[len]);
-    if (utils.emptySync(dir)) {
-      utils.del.sync(dir, options);
-      res.push(dir);
+    if (isDirectory(dir)) {
+      var files = fs.readdirSync(dir);
+
+      if (isEmpty(files, opts.filter)) {
+        rimraf.sync(dir);
+
+        var rel = relative(dir);
+        if (opts.silent !== true) {
+          ok('deleted:', rel);
+        }
+
+        acc.push(rel);
+        remove(path.dirname(dir));
+
+      } else {
+        for (var i = 0; i < files.length; i++) {
+          remove(path.resolve(dir, files[i]));
+        }
+      }
     }
   }
-  return res;
+
+  remove(dirname);
+  return acc;
 };
+
+function isDirectory(filepath) {
+  var stat = tryStat(filepath);
+  if (stat) {
+    return stat.isDirectory();
+  }
+}
+
+function tryStat(filepath) {
+  try {
+    return fs.statSync(filepath);
+  } catch (err) {}
+}
+
+function isEmpty(files, fn) {
+  try {
+    return files.filter(fn).length === 0;
+  } catch (err) {
+    if (err & err.code === 'ENOENT') {
+      return false;
+    }
+    throw err;
+  }
+}
+
+function keep(filename) {
+  return !/(?:Thumbs\.db|\.DS_Store)$/i.test(filename);
+}
 
 /**
  * Expose deleteEmpty

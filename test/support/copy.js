@@ -2,65 +2,62 @@
 
 var fs = require('fs');
 var path = require('path');
-var async = require('async');
+var series = require('async-each-series');
 var glob = require('matched');
 
 /**
  * ```js
- * copyFixtures('fixtures', 'temp', function(err) {
- *   if (err) return console.log(err);
- *   console.log('done!');
- * });
- * ``` 
+ * copy('fixtures', 'temp', cb);
+ * ```
  * @param {String} cwd
- * @param {String} dest
+ * @param {String} destDir
  * @param {Function} cb
  */
 
-function copyFixtures(cwd, dest, cb) {
+module.exports = function(cwd, destDir, cb) {
   var opts = {cwd: cwd, dot: true, ignore: ['**/.gitkeep']};
+
   glob('**/*', opts, function(err, files) {
     if (err) {
       err.code = 'glob';
-      return cb(err);
+      cb(err);
+      return;
     }
 
-    if (!fs.existsSync(dest)) {
-      fs.mkdirSync(dest);
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir);
     }
 
-    async.each(files, function(filename, next) {
-      var destPath = path.join(dest, filename);
+    series(files, function(basename, next) {
+      var destPath = path.join(destDir, basename);
+
       if (fs.existsSync(destPath)) {
-        return next();
+        next();
+        return;
       }
 
-      var fp = path.join(cwd, filename);
+      var fp = path.join(cwd, basename);
 
       if (fs.statSync(fp).isDirectory()) {
-        return fs.mkdir(destPath, next);
+        fs.mkdir(destPath, next);
+        return;
       }
 
-      fs.readFile(fp, 'utf8', function(err, str) {
+      fs.readFile(fp, function(err, buffer) {
         if (err) {
-          err.code = 'read';
+          err.code = 'readFile';
           return next(err);
         }
 
-        fs.writeFile(destPath, str, function(err) {
+        fs.writeFile(destPath, buffer, function(err) {
           if (err) {
-            err.code = 'write';
+            err.code = 'writeFile';
             return next(err);
           }
+
           next();
         });
       });
     }, cb);
   });
-}
-
-/**
- * Expose `copyFixtures`
- */
-
-module.exports = copyFixtures;
+};
