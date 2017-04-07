@@ -10,22 +10,23 @@
 var fs = require('fs');
 var path = require('path');
 var relative = require('relative');
+var extend = require('extend-shallow');
 var series = require('async-each-series');
 var rimraf = require('rimraf');
 var ok = require('log-ok');
 
-function deleteEmpty(cwd, options, done) {
+function deleteEmpty(cwd, options, callback) {
   if (typeof options === 'function') {
-    done = options;
+    callback = options;
     options = {};
   }
 
-  if (typeof done !== 'function') {
+  if (typeof callback !== 'function') {
     throw new TypeError('expected callback to be a function');
   }
 
   var dirname = path.resolve(cwd);
-  var opts = Object.assign({filter: keep}, options);
+  var opts = extend({}, options);
   var acc = [];
 
   function remove(filepath, cb) {
@@ -56,7 +57,7 @@ function deleteEmpty(cwd, options, done) {
 
           // display relative path for readability
           var rel = relative(dir);
-          if (opts.silent !== true) {
+          if (opts.verbose !== false) {
             ok('deleted:', rel);
           }
 
@@ -73,18 +74,21 @@ function deleteEmpty(cwd, options, done) {
   }
 
   remove(dirname, function(err) {
-    done(err, acc);
+    callback(err, acc);
   });
 }
 
 deleteEmpty.sync = function(cwd, options) {
   var dirname = path.resolve(cwd);
-  var opts = Object.assign({filter: keep}, options);
+  var opts = extend({}, options);
   var acc = [];
 
   function remove(filepath) {
     var dir = path.resolve(filepath);
-    if (dir.indexOf(dirname) !== 0) return;
+
+    if (dir.indexOf(dirname) !== 0) {
+      return;
+    }
 
     if (isDirectory(dir)) {
       var files = fs.readdirSync(dir);
@@ -93,7 +97,7 @@ deleteEmpty.sync = function(cwd, options) {
         rimraf.sync(dir);
 
         var rel = relative(dir);
-        if (opts.silent !== true) {
+        if (opts.verbose !== false) {
           ok('deleted:', rel);
         }
 
@@ -125,19 +129,27 @@ function tryStat(filepath) {
   } catch (err) {}
 }
 
-function isEmpty(files, fn) {
-  try {
-    return files.filter(fn).length === 0;
-  } catch (err) {
-    if (err & err.code === 'ENOENT') {
-      return false;
-    }
-    throw err;
-  }
+/**
+ * Returns true if the file is a garbage file that can be deleted
+ */
+
+function isGarbageFile(filename) {
+  return /(?:Thumbs\.db|\.DS_Store)$/i.test(filename);
 }
 
-function keep(filename) {
-  return !/(?:Thumbs\.db|\.DS_Store)$/i.test(filename);
+/**
+ * Return true if the given `files` array has zero length or only
+ * includes unwanted files.
+ */
+
+function isEmpty(files, filterFn) {
+  var filter = filterFn || isGarbageFile;
+  for (var i = 0; i < files.length; ++i) {
+    if (!filter(files[i])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
