@@ -42,29 +42,40 @@ function deleteEmpty(cwd, options, callback) {
       return;
     }
 
+    if(opts.dryRun && isIgnored(acc, relative(dir))) {
+      cb();
+      return;
+    }
+
     fs.readdir(dir, function(err, files) {
       if (err) {
         cb(err);
         return;
       }
 
-      if (isEmpty(files, opts.filter)) {
-        rimraf(dir, function(err) {
-          if (err) {
-            cb(err);
-            return;
-          }
+      var ignoreProcessed = opts.dryRun ? isIgnored.bind(null, acc) : null;
+      if (isEmpty(files, opts.filter, ignoreProcessed, dir)) {
+        // display relative path for readability
+        var rel = relative(dir);
 
-          // display relative path for readability
-          var rel = relative(dir);
-          if (opts.verbose !== false) {
-            ok('deleted:', rel);
-          }
-
+        if (opts.dryRun) {
           acc.push(rel);
           remove(path.dirname(dir), cb);
-        });
+        } else {
+          rimraf(dir, function(err) {
+            if (err) {
+              cb(err);
+              return;
+            }
 
+            if (opts.verbose !== false) {
+              ok('deleted:', rel);
+            }
+
+            acc.push(rel);
+            remove(path.dirname(dir), cb);
+          });
+        }
       } else {
         series(files, function(file, next) {
           remove(path.resolve(dir, file), next);
@@ -90,13 +101,24 @@ deleteEmpty.sync = function(cwd, options) {
       return;
     }
 
+    if(opts.dryRun && isIgnored(acc, relative(dir))) {
+      return;
+    }
+
     if (isDirectory(dir)) {
       var files = fs.readdirSync(dir);
+      var ignoreProcessed = opts.dryRun ? isIgnored.bind(null, acc) : null;
+      var rel = relative(dir);
 
-      if (isEmpty(files, opts.filter)) {
+      if (isEmpty(files, opts.filter, ignoreProcessed, dir)) {
+        if (opts.dryRun) {
+          acc.push(rel);
+          remove(path.dirname(dir));
+          return;
+        }
+
         rimraf.sync(dir);
 
-        var rel = relative(dir);
         if (opts.verbose !== false) {
           ok('deleted:', rel);
         }
@@ -137,16 +159,38 @@ function isGarbageFile(filename) {
   return /(?:Thumbs\.db|\.DS_Store)$/i.test(filename);
 }
 
+
+/**
+ * Returns true if the file is ignored (for the dry run)
+ */
+
+function isIgnored(ignoredList, filename) {
+  for (var i in ignoredList) {
+    if (ignoredList[i] === filename) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Return true if the given `files` array has zero length or only
  * includes unwanted files.
  */
 
-function isEmpty(files, filterFn) {
+function isEmpty(files, filterFn, inIgnoreListFn, dir) {
   var filter = filterFn || isGarbageFile;
   for (var i = 0; i < files.length; ++i) {
     if (!filter(files[i])) {
-      return false;
+      // no ignoring function, so it's not empty
+      if(!inIgnoreListFn) {
+        return false;
+      }
+
+      // if file is not in ignore list, then it's not empty too
+      if (!inIgnoreListFn(relative(path.join(dir, files[i])))) {
+        return false;
+      }
     }
   }
   return true;
