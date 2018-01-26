@@ -68,7 +68,7 @@ describe('deleteEmpty', function() {
 
   describe('sync', function(cb) {
     it('should delete the given cwd if empty', function(cb) {
-      deleteEmpty.sync('test/temp');
+      deleteEmpty.sync('test/temp/b');
       assert(!fs.existsSync('test/temp/b'));
       cb();
     });
