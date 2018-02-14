@@ -11,6 +11,15 @@ var deleteEmpty = require('..');
 var tests = path.join.bind(path, __dirname);
 var fixtures = path.join.bind(path, tests('fixtures'));
 
+function getResultArray() {
+  return [
+    path.normalize('test/temp/a/aa/aaa/aaaa'),
+    path.normalize('test/temp/a/aa/aaa'),
+    path.normalize('test/temp/b'),
+    path.normalize('test/temp/c')
+  ].sort();
+}
+
 describe('deleteEmpty', function() {
   beforeEach(function(cb) {
     copy('test/fixtures', 'test/temp', cb);
@@ -55,12 +64,48 @@ describe('deleteEmpty', function() {
           return;
         }
 
-        assert.deepEqual(deleted.sort(), [
-          'test/temp/a/aa/aaa/aaaa',
-          'test/temp/a/aa/aaa',
-          'test/temp/b',
-          'test/temp/c'
-        ].sort());
+        assert.deepEqual(deleted.sort(), getResultArray());
+        cb();
+      });
+    });
+  });
+
+  describe('async dry run', function(cb) {
+    it('should not delete the given cwd if empty', function(cb) {
+
+      deleteEmpty('test/temp/b', {dryRun: true}, function(err, deleted) {
+        if (err) {
+          cb(err);
+          return;
+        }
+        fs.exists('test/temp/b', function(exists) {
+          assert(exists);
+          cb();
+        });
+      });
+    });
+
+    it('should not delete nested directories', function(cb) {
+      deleteEmpty('test/temp',  {dryRun: true}, function(err, deleted) {
+        if (err) {
+          cb(err);
+          return;
+        }
+        assert(fs.existsSync('test/temp/a/aa/aaa'));
+        assert(fs.existsSync('test/temp/b'));
+        assert(fs.existsSync('test/temp/c'));
+        cb();
+      });
+    });
+
+    it('should return the array of empty directories', function(cb) {
+      deleteEmpty('test/temp',  {dryRun: true}, function(err, deleted) {
+        if (err) {
+          cb(err);
+          return;
+        }
+
+        assert.deepEqual(deleted.sort(), getResultArray());
         cb();
       });
     });
@@ -84,12 +129,30 @@ describe('deleteEmpty', function() {
 
     it('should return the array of deleted directories', function(cb) {
       var deleted = deleteEmpty.sync('test/temp');
-      assert.deepEqual(deleted.sort(), [
-        'test/temp/a/aa/aaa/aaaa',
-        'test/temp/a/aa/aaa',
-        'test/temp/b',
-        'test/temp/c'
-      ].sort());
+      assert.deepEqual(deleted.sort(), getResultArray());
+      cb();
+    });
+  });
+
+  describe('sync dry run', function(cb) {
+    it('should not delete the given cwd if empty', function(cb) {
+      deleteEmpty.sync('test/temp/b', {dryRun: true});
+      assert(fs.existsSync('test/temp/b'));
+      cb();
+    });
+
+    it('should not delete nested directories', function(cb) {
+      deleteEmpty.sync('test/temp', {dryRun: true});
+      assert(fs.existsSync('test/temp/a/aa/aaa/aaaa'));
+      assert(fs.existsSync('test/temp/a/aa/aaa'));
+      assert(fs.existsSync('test/temp/b'));
+      assert(fs.existsSync('test/temp/c'));
+      cb();
+    });
+
+    it('should return the array of empty directories', function(cb) {
+      var deleted = deleteEmpty.sync('test/temp', {dryRun: true});
+      assert.deepEqual(deleted.sort(), getResultArray());
       cb();
     });
   });
