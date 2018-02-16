@@ -29,12 +29,12 @@
     "test": "mocha"
   },
   "dependencies": {
-    "async-each-series": "^1.1.0",
     "log-ok": "^0.1.1",
     "relative": "^3.0.2",
     "rimraf": "^2.6.2"
   },
   "devDependencies": {
+    "async-each-series": "^1.1.0",
     "gulp-format-md": "^1.0.0",
     "matched": "^1.0.2",
     "mocha": "^3.5.3"

@@ -1,19 +1,20 @@
 /*!
  * delete-empty <https://github.com/jonschlinkert/delete-empty>
  *
- * Copyright (c) 2015, 2017, Jon Schlinkert.
+ * Copyright (c) 2015, 2017-2018, Jon Schlinkert.
  * Released under the MIT License.
  */
 
 'use strict';
 
-var fs = require('fs');
-var path = require('path');
-var relative = require('relative');
-var extend = require('extend-shallow');
-var series = require('async-each-series');
-var rimraf = require('rimraf');
-var ok = require('log-ok');
+const fs = require('fs');
+const util = require('util');
+const path = require('path');
+const ok = require('log-ok');
+const relative = require('relative');
+const rimraf = require('rimraf');
+const readdir = util.promisify(fs.readdir);
+const del = util.promisify(rimraf);
 
 function deleteEmpty(cwd, options, callback) {
   if (typeof options === 'function') {
@@ -21,116 +22,95 @@ function deleteEmpty(cwd, options, callback) {
     options = {};
   }
 
-  if (typeof callback !== 'function') {
-    throw new TypeError('expected callback to be a function');
+  const promise = deleteEmpty.promise(cwd, options);
+  if (typeof callback === 'function') {
+    promise.then(acc => callback(null, acc)).catch(callback);
+    return;
   }
-
-  var dirname = path.resolve(cwd);
-  var opts = extend({}, options);
-  var acc = [];
-
-  function remove(filepath, cb) {
-    var dir = path.resolve(filepath);
-
-    if (dir.indexOf(dirname) !== 0) {
-      cb();
-      return;
-    }
-
-    if (!isDirectory(dir)) {
-      cb();
-      return;
-    }
-
-    if(opts.dryRun && isIgnored(acc, relative(dir))) {
-      cb();
-      return;
-    }
-
-    fs.readdir(dir, function(err, files) {
-      if (err) {
-        cb(err);
-        return;
-      }
-
-      var ignoreProcessed = opts.dryRun ? isIgnored.bind(null, acc) : null;
-      if (isEmpty(files, opts.filter, ignoreProcessed, dir)) {
-        // display relative path for readability
-        var rel = relative(dir);
-
-        if (opts.dryRun) {
-          acc.push(rel);
-          remove(path.dirname(dir), cb);
-        } else {
-          rimraf(dir, function(err) {
-            if (err) {
-              cb(err);
-              return;
-            }
-
-            if (opts.verbose !== false) {
-              ok('deleted:', rel);
-            }
-
-            acc.push(rel);
-            remove(path.dirname(dir), cb);
-          });
-        }
-      } else {
-        series(files, function(file, next) {
-          remove(path.resolve(dir, file), next);
-        }, cb);
-      }
-    });
-  }
-
-  remove(dirname, function(err) {
-    callback(err, acc);
-  });
+  return promise;
 }
 
+deleteEmpty.promise = function(cwd, options) {
+  const opts = Object.assign({}, options);
+  const dirname = path.resolve(cwd);
+  const acc = [];
+
+  if (typeof cwd !== 'string') {
+    return Promise.reject(new TypeError('expected the first argument to be a string'));
+  }
+
+  async function remove(filepath) {
+    const dir = path.resolve(filepath);
+
+    if (dir.indexOf(dirname) !== 0 || acc.indexOf(dir) !== -1 || !isDirectory(dir)) {
+      return Promise.resolve(acc);
+    }
+
+    return await readdir(dir)
+      .then(async files => {
+        if (isEmpty(files, dir, acc, opts)) {
+          acc.push(dir);
+
+          if (opts.dryRun === true) {
+            return remove(path.dirname(dir));
+          }
+
+          return del(dir)
+            .then(() => {
+              if (opts.verbose === true) {
+                ok('deleted:', relative(dir));
+              }
+              return remove(path.dirname(dir));
+            });
+
+        } else {
+          for (const file of files) {
+            await remove(path.join(dir, file));
+          }
+          return Promise.resolve(acc);
+        }
+      });
+  }
+
+  return remove(dirname).then(acc);
+};
+
 deleteEmpty.sync = function(cwd, options) {
-  var dirname = path.resolve(cwd);
-  var opts = extend({}, options);
-  var acc = [];
+  const opts = Object.assign({}, options);
+  const dirname = path.resolve(cwd);
+  const acc = [];
+
+  if (typeof cwd !== 'string') {
+    throw new TypeError('expected the first argument to be a string');
+  }
 
   function remove(filepath) {
-    var dir = path.resolve(filepath);
+    const dir = path.resolve(filepath);
 
-    if (dir.indexOf(dirname) !== 0) {
-      return;
+    if (dir.indexOf(dirname) !== 0 || acc.indexOf(dir) !== -1 || !isDirectory(dir)) {
+      return acc;
     }
 
-    if(opts.dryRun && isIgnored(acc, relative(dir))) {
-      return;
-    }
+    const files = fs.readdirSync(dir);
 
-    if (isDirectory(dir)) {
-      var files = fs.readdirSync(dir);
-      var ignoreProcessed = opts.dryRun ? isIgnored.bind(null, acc) : null;
-      var rel = relative(dir);
+    if (isEmpty(files, dir, acc, opts)) {
+      acc.push(dir);
 
-      if (isEmpty(files, opts.filter, ignoreProcessed, dir)) {
-        if (opts.dryRun) {
-          acc.push(rel);
-          remove(path.dirname(dir));
-          return;
-        }
-
-        rimraf.sync(dir);
-
-        if (opts.verbose !== false) {
-          ok('deleted:', rel);
-        }
-
-        acc.push(rel);
-        remove(path.dirname(dir));
-
-      } else {
-        for (var i = 0; i < files.length; i++) {
-          remove(path.resolve(dir, files[i]));
-        }
+      if (opts.dryRun === true) {
+        return remove(path.dirname(dir));
       }
+
+      rimraf.sync(dir);
+      if (opts.verbose === true) {
+        ok('deleted:', relative(dir));
+      }
+      return remove(path.dirname(dir));
+
+    } else {
+      for (const file of files) {
+        remove(path.join(dir, file));
+      }
+      return acc;
     }
   }
 
@@ -138,17 +118,36 @@ deleteEmpty.sync = function(cwd, options) {
   return acc;
 };
 
-function isDirectory(filepath) {
-  var stat = tryStat(filepath);
-  if (stat) {
-    return stat.isDirectory();
+/**
+ * Return true if the given `files` array has zero length or only
+ * includes unwanted files.
+ */
+
+function isEmpty(files, dir, acc, opts) {
+  var filter = opts.filter || isGarbageFile;
+  for (const file of files) {
+    const fp = path.join(dir, file);
+
+    if (opts.dryRun && acc.indexOf(fp) !== -1) {
+      continue;
+    }
+    if (filter(fp) === false) {
+      return false;
+    }
   }
+  return true;
 }
 
-function tryStat(filepath) {
+/**
+ * Returns true if the given filepath exists and is a directory
+ */
+
+function isDirectory(dir) {
   try {
-    return fs.statSync(filepath);
-  } catch (err) {}
+    return fs.statSync(dir).isDirectory();
+  } catch (err) {
+    return false;
+  }
 }
 
 /**
@@ -157,43 +156,6 @@ function tryStat(filepath) {
 
 function isGarbageFile(filename) {
   return /(?:Thumbs\.db|\.DS_Store)$/i.test(filename);
-}
-
-
-/**
- * Returns true if the file is ignored (for the dry run)
- */
-
-function isIgnored(ignoredList, filename) {
-  for (var i in ignoredList) {
-    if (ignoredList[i] === filename) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Return true if the given `files` array has zero length or only
- * includes unwanted files.
- */
-
-function isEmpty(files, filterFn, inIgnoreListFn, dir) {
-  var filter = filterFn || isGarbageFile;
-  for (var i = 0; i < files.length; ++i) {
-    if (!filter(files[i])) {
-      // no ignoring function, so it's not empty
-      if(!inIgnoreListFn) {
-        return false;
-      }
-
-      // if file is not in ignore list, then it's not empty too
-      if (!inIgnoreListFn(relative(path.join(dir, files[i])))) {
-        return false;
-      }
-    }
-  }
-  return true;
 }
 
 /**
