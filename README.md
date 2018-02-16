@@ -1,6 +1,8 @@
-# delete-empty [![NPM version](https://img.shields.io/npm/v/delete-empty.svg?style=flat)](https://www.npmjs.com/package/delete-empty) [![NPM monthly downloads](https://img.shields.io/npm/dm/delete-empty.svg?style=flat)](https://npmjs.org/package/delete-empty)  [![NPM total downloads](https://img.shields.io/npm/dt/delete-empty.svg?style=flat)](https://npmjs.org/package/delete-empty) [![Linux Build Status](https://img.shields.io/travis/jonschlinkert/delete-empty.svg?style=flat&label=Travis)](https://travis-ci.org/jonschlinkert/delete-empty)
+# delete-empty [![NPM version](https://img.shields.io/npm/v/delete-empty.svg?style=flat)](https://www.npmjs.com/package/delete-empty) [![NPM monthly downloads](https://img.shields.io/npm/dm/delete-empty.svg?style=flat)](https://npmjs.org/package/delete-empty) [![NPM total downloads](https://img.shields.io/npm/dt/delete-empty.svg?style=flat)](https://npmjs.org/package/delete-empty) [![Linux Build Status](https://img.shields.io/travis/jonschlinkert/delete-empty.svg?style=flat&label=Travis)](https://travis-ci.org/jonschlinkert/delete-empty)
 
 > Recursively delete all empty folders in a directory and child directories.
+
+Please consider following this project's author, [Jon Schlinkert](https://github.com/jonschlinkert), and consider starring the project to show your :heart: and support.
 
 ## Install
 
@@ -10,17 +12,28 @@ Install with [npm](https://www.npmjs.com/):
 $ npm install --save delete-empty
 ```
 
-Install with [yarn](https://yarnpkg.com):
-
-```sh
-$ yarn add delete-empty
-```
-
 ## Usage
 
 ```js
-var deleteEmpty = require('delete-empty');
+const deleteEmpty = require('delete-empty');
 ```
+
+## CLI
+
+To use the `delete-empty` command from any directory you must first install the package globally with the following command:
+
+```sh
+$ npm install --global delete-empty
+```
+
+**Usage**
+
+```sh
+$ delete-empty [<cwd>] [--dry-run|-d]
+```
+
+* `<cwd>` (optional) - initial directory to begin the search for empty directories. By default, the current working directory (`process.cwd()`) is used (note that `process.cwd()` is only used as the default by the CLI).
+* `-d, --dry-run` (optional) - output empty directories to the terminal, does not delete anything
 
 ## API
 
@@ -32,69 +45,63 @@ foo/
 -  ├── aa/
   ├── bb/
   │ └─┬ bbb/
-  │   ├── one.txt
-  │   └── two.txt
+  │ │ ├── one.txt
+  │ │ └── two.txt
 -  ├── cc/
 -  ├ b/
 -  └ c/
 ```
 
-**async**
+### async promise
+
+If no callback is passed, a promise is returned. Returns the array of deleted directories.
+
+```js
+deleteEmpty('foo/')
+  .then(deleted => console.log(deleted)) //=> ['foo/aa/', 'foo/a/cc/', 'foo/b/', 'foo/c/']
+  .catch(console.error);
+```
+
+### async callback
+
+Returns the array of deleted directories in the callback.
 
 ```js
 deleteEmpty('foo/', function(err, deleted) {
-  console.log(deleted);
-  //=> ['foo/aa/', 'foo/a/cc/', 'foo/b/', 'foo/c/']
+  console.log(deleted); //=> ['foo/aa/', 'foo/a/cc/', 'foo/b/', 'foo/c/']
 });
 ```
 
-**sync**
+### sync
+
+Returns the array of deleted directories.
 
 ```js
-deleteEmpty.sync('foo/');
+console.log(deleteEmpty.sync('foo/')); //=> ['foo/aa/', 'foo/a/cc/', 'foo/b/', 'foo/c/']
 ```
-
-As with the async method, an array of deleted directories is returned, in case you want to log them out or provide some kind of feedback to the user.
-
-```js
-var deleted = deleteEmpty.sync('foo/');
-console.log(deleted);
-//=> ['foo/aa/', 'foo/a/cc/', 'foo/b/', 'foo/c/']
-```
-
-**cli**
-
-```
-bin/cli.js [<path>] [--dry-run|-d]
-```
-
-* `<path>` - if given, is used as a working directory (otherwise it's cwd)
-* `-d, --dry-run` - if given, prevents empty dirs from being removed, outputs them to console instead
 
 ## About
 
-### Related projects
-
-* [copy](https://www.npmjs.com/package/copy): Copy files or directories using globs. | [homepage](https://github.com/jonschlinkert/copy "Copy files or directories using globs.")
-* [delete](https://www.npmjs.com/package/delete): Delete files and folders and any intermediate directories if they exist (sync and async). | [homepage](https://github.com/jonschlinkert/delete "Delete files and folders and any intermediate directories if they exist (sync and async).")
-* [fs-utils](https://www.npmjs.com/package/fs-utils): fs extras and utilities to extend the node.js file system module. Used in Assemble and… [more](https://github.com/assemble/fs-utils) | [homepage](https://github.com/assemble/fs-utils "fs extras and utilities to extend the node.js file system module. Used in Assemble and many other projects.")
-* [matched](https://www.npmjs.com/package/matched): Adds array support to node-glob, sync and async. Also supports tilde expansion (user home) and… [more](https://github.com/jonschlinkert/matched) | [homepage](https://github.com/jonschlinkert/matched "Adds array support to node-glob, sync and async. Also supports tilde expansion (user home) and resolving to global npm modules.")
-
-### Contributing
+<details>
+<summary><strong>Contributing</strong></summary>
 
 Pull requests and stars are always welcome. For bugs and feature requests, [please create an issue](../../issues/new).
 
-### Contributors
+</details>
 
-| **Commits** | **Contributor** |  
-| --- | --- |  
-| 26 | [jonschlinkert](https://github.com/jonschlinkert) |  
-| 1  | [doowb](https://github.com/doowb) |  
-| 1  | [svenschoenung](https://github.com/svenschoenung) |  
-| 1  | [vpalmisano](https://github.com/vpalmisano) |  
-| 1  | [treble-snake](https://github.com/treble-snake) |  
+<details>
+<summary><strong>Running Tests</strong></summary>
 
-### Building docs
+Running and reviewing unit tests is a great way to get familiarized with a library and its API. You can install dependencies and run tests with the following command:
+
+```sh
+$ npm install && npm test
+```
+
+</details>
+
+<details>
+<summary><strong>Building docs</strong></summary>
 
 _(This project's readme.md is generated by [verb](https://github.com/verbose/verb-generate-readme), please don't edit the readme directly. Any changes to the readme must be made in the [.verb.md](.verb.md) readme template.)_
 
@@ -104,18 +111,32 @@ To generate the readme, run the following command:
 $ npm install -g verbose/verb#dev verb-generate-readme && verb
 ```
 
-### Running tests
+</details>
 
-Running and reviewing unit tests is a great way to get familiarized with a library and its API. You can install dependencies and run tests with the following command:
+### Related projects
 
-```sh
-$ npm install && npm test
-```
+You might also be interested in these projects:
+
+* [copy](https://www.npmjs.com/package/copy): Copy files or directories using globs. | [homepage](https://github.com/jonschlinkert/copy "Copy files or directories using globs.")
+* [delete](https://www.npmjs.com/package/delete): Delete files and folders and any intermediate directories if they exist (sync and async). | [homepage](https://github.com/jonschlinkert/delete "Delete files and folders and any intermediate directories if they exist (sync and async).")
+* [fs-utils](https://www.npmjs.com/package/fs-utils): fs extras and utilities to extend the node.js file system module. Used in Assemble and… [more](https://github.com/assemble/fs-utils) | [homepage](https://github.com/assemble/fs-utils "fs extras and utilities to extend the node.js file system module. Used in Assemble and many other projects.")
+* [matched](https://www.npmjs.com/package/matched): Adds array support to node-glob, sync and async. Also supports tilde expansion (user home) and… [more](https://github.com/jonschlinkert/matched) | [homepage](https://github.com/jonschlinkert/matched "Adds array support to node-glob, sync and async. Also supports tilde expansion (user home) and resolving to global npm modules.")
+
+### Contributors
+
+| **Commits** | **Contributor** | 
+| --- | --- |
+| 27 | [jonschlinkert](https://github.com/jonschlinkert) |
+| 2 | [treble-snake](https://github.com/treble-snake) |
+| 1 | [doowb](https://github.com/doowb) |
+| 1 | [svenschoenung](https://github.com/svenschoenung) |
+| 1 | [vpalmisano](https://github.com/vpalmisano) |
 
 ### Author
 
 **Jon Schlinkert**
 
+* [linkedin/in/jonschlinkert](https://linkedin.com/in/jonschlinkert)
 * [github/jonschlinkert](https://github.com/jonschlinkert)
 * [twitter/jonschlinkert](https://twitter.com/jonschlinkert)
 
@@ -126,4 +147,4 @@ Released under the [MIT License](LICENSE).
 
 ***
 
-_This file was generated by [verb-generate-readme](https://github.com/verbose/verb-generate-readme), v0.6.0, on January 29, 2018._
+_This file was generated by [verb-generate-readme](https://github.com/verbose/verb-generate-readme), v0.6.0, on February 16, 2018._
