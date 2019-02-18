@@ -1,7 +1,7 @@
 {
   "name": "delete-empty",
   "description": "Recursively delete all empty folders in a directory and child directories.",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "homepage": "https://github.com/jonschlinkert/delete-empty",
   "author": "Jon Schlinkert (https://github.com/jonschlinkert)",
   "contributors": [
@@ -23,7 +23,7 @@
     "delete-empty": "bin/cli.js"
   },
   "engines": {
-    "node": ">=6"
+    "node": ">=8"
   },
   "scripts": {
     "test": "mocha"
