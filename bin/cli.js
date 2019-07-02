@@ -1,24 +1,64 @@
 #!/usr/bin/env node
 
-var ok = require('log-ok');
-var deleteEmpty = require('..');
-var argv = process.argv.slice(2);
-var args = argv.filter(arg => (arg !== '-d' && arg !== '--dry-run'));
-var cwd = args[0] || process.cwd();
-var dryRun = argv.length !== args.length;
+const os = require('os');
+const path = require('path');
+const { cyan, bold, dim, green, symbols } = require('ansi-colors');
+const deleteEmpty = require('..');
+const argv = require('minimist')(process.argv.slice(2), {
+  boolean: true,
+  number: true,
+  alias: { d: 'dryRun' },
+  rename: { _: 'files' }
+});
 
-deleteEmpty(cwd, { dryRun: dryRun }, function(err, files) {
-  if (err) {
+const moduleDir = dim(`<${path.dirname(__dirname)}>`);
+const name = pkg => bold(`delete-empty v${pkg.version}`);
+const help = pkg => `
+Path: <${path.dirname(__dirname)}>
+
+Usage: ${cyan('$ delete-empty <directory> [options]')}
+
+Directory: (optional) Initial directory to begin the search for empty
+           directories. Otherwise, cwd is used.
+
+[Options]:
+  -c, --cwd           Set the current working directory for folders to search.
+  -d, --dryRun        Do a dry run without deleting any files.
+  -h, --help          Display this help menu
+  -V, --version       Display the current version of rename
+  -v, --verbose       Display all verbose logging messages (currently not used)
+`;
+
+if (argv.help) {
+  console.log(help(require('../package')));
+  process.exit();
+}
+
+const ok = green(symbols.check);
+const cwd = path.resolve(argv._[0] || argv.cwd || process.cwd());
+const relative = filepath => {
+  if (filepath.startsWith(cwd)) {
+    return path.relative(cwd, filepath);
+  }
+  if (filepath.startsWith(os.homedir())) {
+    return path.join('~', filepath.slice(os.homedir().length));
+  }
+  return cwd;
+};
+
+if (argv.dryRun) {
+  argv.verbose = true;
+}
+
+let count = 0;
+argv.onDirectory = () => (count++);
+
+deleteEmpty(cwd, argv)
+  .then(files => {
+    console.log(ok, 'Deleted', files.length, 'of', count, 'directories');
+    process.exit();
+  })
+  .catch(err => {
     console.error(err);
     process.exit(1);
-  }
-
-  if (dryRun) {
-    console.log('Dry run. Empty directories (not deleted):');
-    for (var file in files) ok(files[file]);
-    console.log('Total: ', files.length);
-  }
-
-  console.log('Done');
-  process.exit();
-});
+  });

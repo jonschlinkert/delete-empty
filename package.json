@@ -23,21 +23,22 @@
     "delete-empty": "bin/cli.js"
   },
   "engines": {
-    "node": ">=6"
+    "node": ">=10"
   },
   "scripts": {
     "test": "mocha"
   },
   "dependencies": {
-    "log-ok": "^0.1.1",
-    "relative": "^3.0.2",
+    "ansi-colors": "^4.1.0",
+    "minimist": "^1.2.0",
+    "path-starts-with": "^2.0.0",
     "rimraf": "^2.6.2"
   },
   "devDependencies": {
-    "async-each-series": "^1.1.0",
+    "@folder/readdir": "^2.0.0",
     "gulp-format-md": "^1.0.0",
-    "matched": "^1.0.2",
-    "mocha": "^3.5.3"
+    "mocha": "^3.5.3",
+    "write": "^1.0.3"
   },
   "keywords": [
     "del",
@@ -53,7 +54,7 @@
   ],
   "verb": {
     "run": true,
-    "toc": false,
+    "toc": true,
     "layout": "default",
     "tasks": [
       "readme"

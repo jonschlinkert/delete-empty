@@ -1,63 +1,24 @@
 'use strict';
 
-var fs = require('fs');
-var path = require('path');
-var series = require('async-each-series');
-var glob = require('matched');
+const fs = require('fs');
+const path = require('path');
+const readdir = require('@folder/readdir');
+const write = require('write');
 
-/**
- * ```js
- * copy('fixtures', 'temp', cb);
- * ```
- * @param {String} cwd
- * @param {String} destDir
- * @param {Function} cb
- */
+module.exports = async (cwd, destDir) => {
+  const filter = file => file.name !== '.gitkeep';
+  const files = await readdir(cwd, { recursive: true, objects: true, absolute: true, filter });
 
-module.exports = function(cwd, destDir, cb) {
-  var opts = {cwd: cwd, dot: true, ignore: ['**/.gitkeep']};
+  for (let file of files) {
+    let destPath = path.resolve(destDir, path.relative(cwd, file.path));
+    if (fs.existsSync(destPath)) continue;
 
-  glob('**/*', opts, function(err, files) {
-    if (err) {
-      err.code = 'glob';
-      cb(err);
-      return;
+    if (file.isDirectory()) {
+      fs.mkdirSync(destPath, { recursive: true });
+    } else {
+      write.sync(destPath, fs.readFileSync(file.path));
     }
+  }
 
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir);
-    }
-
-    series(files, function(basename, next) {
-      var destPath = path.join(destDir, basename);
-
-      if (fs.existsSync(destPath)) {
-        next();
-        return;
-      }
-
-      var fp = path.join(cwd, basename);
-
-      if (fs.statSync(fp).isDirectory()) {
-        fs.mkdir(destPath, next);
-        return;
-      }
-
-      fs.readFile(fp, function(err, buffer) {
-        if (err) {
-          err.code = 'readFile';
-          return next(err);
-        }
-
-        fs.writeFile(destPath, buffer, function(err) {
-          if (err) {
-            err.code = 'writeFile';
-            return next(err);
-          }
-
-          next();
-        });
-      });
-    }, cb);
-  });
+  return files;
 };
