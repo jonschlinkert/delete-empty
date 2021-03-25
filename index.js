@@ -6,177 +6,198 @@
 
 'use strict';
 
+const kDirname = Symbol('dirname');
+const kIgnored = Symbol('ignored');
+
 const fs = require('fs');
-const util = require('util');
 const path = require('path');
+const util = require('util');
 const rimraf = require('rimraf');
 const startsWith = require('path-starts-with');
-const colors = require('ansi-colors');
-const readdir = util.promisify(fs.readdir);
-
-/**
- * Helpers
- */
+const systemPathRegex = require('./lib/system-path-regex');
 
 const GARBAGE_REGEX = /(?:Thumbs\.db|\.DS_Store)$/i;
-const isGarbageFile = (file, regex = GARBAGE_REGEX) => regex.test(file);
-const filterGarbage = (file, regex) => !isGarbageFile(file, regex);
-const isValidDir = (cwd, dir, empty) => {
-  return !empty.includes(dir) && startsWith(dir, cwd) && isDirectory(dir);
-};
+const isGarbage = name => GARBAGE_REGEX.test(name);
+const normalize = filepath => path.normalize(filepath.split(/[\\/]/).join(path.sep));
 
-const deleteDir = async (dirname, options = {}) => {
-  if (options.dryRun !== true) {
-    return new Promise((resolve, reject) => {
-      rimraf(dirname, { ...options, glob: false }, err => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    })
-  }
-};
+const isIgnored = (dirname, options = {}) => {
+  const dir = normalize(dirname);
+  const parent = path.dirname(dir);
 
-const deleteDirSync = (dirname, options = {}) => {
-  if (options.dryRun !== true) {
-    return rimraf.sync(dirname, { ...options, glob: false });
-  }
-};
-
-const deleteEmpty = (cwd, options, cb) => {
-  if (typeof cwd !== 'string') {
-    return Promise.reject(new TypeError('expected the first argument to be a string'));
+  if (parent === dir) {
+    return true;
   }
 
+  if (typeof options.ignore === 'function') {
+    return options.ignore(dir);
+  }
+
+  if (options.ignore === false) {
+    return false;
+  }
+
+  const cache = deleteEmpty.cache;
+  const key = options.ignore ? [].concat(options.ignore).flat().join(',') : kIgnored;
+  const regex = cache[key] || (cache[key] = systemPathRegex(parent, options.ignore, options));
+  return regex.test(dir);
+};
+
+const deleteEmpty = async (dirname, options = {}, cb) => {
   if (typeof options === 'function') {
     cb = options;
-    options = null;
+    options = {};
   }
 
   if (typeof cb === 'function') {
-    return deleteEmpty(cwd, options)
-      .then(res => cb(null, res))
-      .catch(cb);
+    deleteEmpty(dirname, options).then(state => cb(null, state)).catch(cb);
+    return;
   }
 
-  const opts = options || {};
-  const dirname = path.resolve(cwd);
-  const onDirectory = opts.onDirectory || (() => {});
-  const empty = [];
+  if (!path.isAbsolute(dirname)) {
+    dirname = path.resolve(dirname);
+  }
 
-  const remove = async filepath => {
-    let dir = path.resolve(filepath);
+  const opts = { ...options };
+  if (!opts[kDirname]) opts[kDirname] = dirname;
 
-    if (!isValidDir(cwd, dir, empty)) return;
-    onDirectory(dir);
+  const { isJunk = isGarbage } = options;
+  const del = options.dryRun ? async () => undefined : util.promisify(rimraf);
+  const state = { deleted: [], children: 0 };
+  const queue = [];
 
-    let files = await readdir(dir);
+  const push = promise => {
+    const p = promise.then(file => {
+      queue.splice(queue.indexOf(p), 1);
+    });
 
-    if (isEmpty(dir, files, empty, opts)) {
-      empty.push(dir);
-
-      await deleteDir(dir, opts);
-
-      if (opts.verbose === true) {
-        console.log(colors.red('Deleted:'), path.relative(cwd, dir));
-      }
-
-      if (typeof opts.onDelete === 'function') {
-        await opts.onDelete(dir);
-      }
-
-      return remove(path.dirname(dir));
-    }
-
-    for (const file of files) {
-      await remove(path.join(dir, file));
-    }
-
-    return empty;
+    queue.push(p);
   };
 
-  return remove(dirname);
-};
-
-deleteEmpty.sync = (cwd, options) => {
-  if (typeof cwd !== 'string') {
-    throw new TypeError('expected the first argument to be a string');
-  }
-
-  const opts = options || {};
-  const dirname = path.resolve(cwd);
-  const deleted = [];
-  const empty = [];
-
-  const remove = filepath => {
-    let dir = path.resolve(filepath);
-
-    if (!isValidDir(cwd, dir, empty)) {
-      return empty;
-    }
-
-    let files = fs.readdirSync(dir);
-
-    if (isEmpty(dir, files, empty, opts)) {
-      empty.push(dir);
-
-      deleteDirSync(dir, opts);
-
-      if (opts.verbose === true) {
-        console.log(colors.red('Deleted:'), path.relative(cwd, dir));
+  return new Promise((resolve, reject) => {
+    fs.readdir(dirname, { withFileTypes: true }, async (err, files) => {
+      if (err) {
+        reject(err);
+        return;
       }
 
-      if (typeof opts.onDelete === 'function') {
-        opts.onDelete(dir);
+      if (isIgnored(dirname, options)) {
+        resolve(state);
+        return;
       }
 
-      return remove(path.dirname(dir));
-    }
+      for (const file of files) {
+        file.path = path.resolve(dirname, file.name);
 
-    for (let filepath of files) {
-      remove(path.join(dir, filepath));
-    }
-    return empty;
-  };
+        if (isIgnored(file.path)) {
+          continue;
+        }
 
-  remove(dirname);
-  return empty;
+        if (isJunk(file.name)) {
+          if (options.dryRun !== true) push(del(file.path, { ...options, glob: false }));
+          continue;
+        }
+
+        if (file.isFile() || file.isSymbolicLink()) {
+          state.children++;
+          continue;
+        }
+
+        if (file.isDirectory()) {
+          state.children++;
+
+          const promise = deleteEmpty(file.path, opts).then(s => {
+            state.deleted.push(...s.deleted);
+
+            if (s.children === 0) {
+              state.children--;
+            }
+
+            return file;
+          });
+
+          push(promise);
+        }
+      }
+
+      await Promise.all(queue);
+
+      const isRoot = () => normalize(opts[kDirname]) === normalize(dirname);
+      const isInsideRoot = () => startsWith(dirname, opts[kDirname]) && dirname !== opts[kDirname];
+
+      if (state.children === 0) {
+        if (((isRoot() && options.force === true || options.deleteRoot === true) || isInsideRoot())) {
+          const promise = del(dirname, { ...options, glob: false })
+            .then(() => {
+              state.deleted.push(dirname);
+            });
+
+          push(promise);
+        }
+      }
+
+      Promise.all(queue).then(() => resolve(state)).catch(reject);
+    });
+  });
 };
 
-/**
- * Return true if the given `files` array has zero length or only
- * includes unwanted files.
- */
+deleteEmpty.sync = (dirname, options = {}) => {
+  if (!path.isAbsolute(dirname)) {
+    dirname = path.resolve(dirname);
+  }
 
-const isEmpty = (dir, files, empty, options = {}) => {
-  let filter = options.filter || filterGarbage;
-  let regex = options.junkRegex;
+  const opts = { ...options };
+  if (!opts[kDirname]) opts[kDirname] = dirname;
 
-  for (let basename of files) {
-    let filepath = path.join(dir, basename);
+  const del = options.dryRun ? () => {} : rimraf.sync;
+  const files = fs.readdirSync(dirname, { withFileTypes: true });
+  const state = { deleted: [], children: 0 };
+  const { isJunk = isGarbage } = options;
 
-    if (!(options.dryRun && empty.includes(filepath)) && filter(filepath, regex) === true) {
-      return false;
+  if (isIgnored(dirname, options)) {
+    return state;
+  }
+
+  for (const file of files) {
+    file.path = path.resolve(dirname, file.name);
+
+    if (isIgnored(file.path)) {
+      continue;
+    }
+
+    if (isJunk(file.name)) {
+      if (options.dryRun !== true) del(file.path, { ...options, glob: false });
+      continue;
+    }
+
+    if (file.isFile() || file.isSymbolicLink()) {
+      state.children++;
+      continue;
+    }
+
+    if (file.isDirectory()) {
+      state.children++;
+
+      const s = deleteEmpty.sync(file.path, opts);
+      state.deleted.push(...s.deleted);
+
+      if (s.children === 0) {
+        state.children--;
+      }
     }
   }
-  return true;
+
+  const isRoot = () => opts[kDirname] === dirname;
+  const isInsideRoot = () => startsWith(dirname, opts[kDirname]) && dirname !== opts[kDirname];
+
+  if (state.children === 0) {
+    if ((isRoot() && (options.force === true || options.deleteRoot === true)) || isInsideRoot()) {
+      del(dirname, { ...options, glob: false });
+      state.deleted.push(dirname);
+    }
+  }
+
+  return state;
 };
 
-/**
- * Returns true if the given filepath exists and is a directory
- */
-
-const isDirectory = dir => {
-  try {
-    return fs.statSync(dir).isDirectory();
-  } catch (err) { /* do nothing */ }
-  return false;
-};
-
-/**
- * Expose deleteEmpty
- */
-
+deleteEmpty.cache = {};
 module.exports = deleteEmpty;
