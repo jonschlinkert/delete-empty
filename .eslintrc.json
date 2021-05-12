@@ -5,16 +5,16 @@
 
   "env": {
     "es2021": true,
-    "node": true,
-    "mocha": true
+    "node": true
   },
 
-  "parserOptions":{
+  "parserOptions": {
     "ecmaVersion": 12
   },
 
   "rules": {
     "accessor-pairs": 2,
+    "arrow-parens": [2, "as-needed"],
     "arrow-spacing": [2, { "before": true, "after": true }],
     "block-spacing": [2, "always"],
     "brace-style": [2, "1tbs", { "allowSingleLine": true }],
@@ -27,7 +27,7 @@
     "eol-last": 2,
     "eqeqeq": [2, "allow-null"],
     "generator-star-spacing": [2, { "before": true, "after": true }],
-    "handle-callback-err": [2, "^(err|error)$" ],
+    "handle-callback-err": [2, "^(err|error)$"],
     "indent": [2, 2, { "SwitchCase": 1 }],
     "key-spacing": [2, { "beforeColon": false, "afterColon": true }],
     "keyword-spacing": [2, { "before": true, "after": true }],
@@ -36,10 +36,9 @@
     "no-array-constructor": 2,
     "no-caller": 2,
     "no-class-assign": 2,
-    "no-console": 0,
     "no-cond-assign": 2,
     "no-const-assign": 2,
-    "no-control-regex": 0,
+    "no-control-regex": 2,
     "no-debugger": 2,
     "no-delete-var": 2,
     "no-dupe-args": 2,
@@ -105,7 +104,7 @@
     "one-var": [2, { "initialized": "never" }],
     "operator-linebreak": [0, "after", { "overrides": { "?": "before", ":": "before" } }],
     "padded-blocks": [0, "never"],
-    "prefer-const": 2,
+    "prefer-const": [2, { "destructuring": "all", "ignoreReadBeforeAssign": false }],
     "quotes": [2, "single", "avoid-escape"],
     "radix": 2,
     "semi": [2, "always"],
