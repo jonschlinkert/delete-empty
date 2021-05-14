@@ -1,8 +1,6 @@
-'use strict';
+import braces from 'braces';
 
-const braces = require('braces');
-
-exports.win32 = [
+export const win32 = [
   '\\$GetCurrent',
   '\\$Recycle.Bin',
   'desktop.ini',
@@ -26,7 +24,7 @@ exports.win32 = [
   'WinSxS'
 ].reduce((acc, dir) => acc.concat(braces.expand(dir)), []);
 
-exports.darwin = [
+export const darwin = [
   '.smbdelete*',
   '.TemporaryItems',
   'bootmgr',
@@ -55,4 +53,10 @@ exports.darwin = [
   '/Volumes'
 ].reduce((acc, dir) => acc.concat(braces.expand(dir)), []);
 
-exports.linux = exports.darwin;
+export const linux = darwin;
+
+export default {
+  linux,
+  darwin,
+  win32
+};

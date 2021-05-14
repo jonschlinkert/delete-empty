@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 
-'use strict';
+import fs from 'fs';
+import path from 'path';
+import minimist from 'minimist';
+import colors from 'ansi-colors';
+import deleteEmpty from '../index.js';
 
-const path = require('path');
-const { cyan, bold, green, symbols } = require('ansi-colors');
-const deleteEmpty = require('..');
+const pkg = JSON.parse(fs.readFileSync(path.join('../package.json')));
+const { cyan, bold } = colors;
 
-const argv = require('minimist')(process.argv.slice(2), {
+const argv = minimist(process.argv.slice(2), {
   boolean: true,
   number: true,
   alias: {
@@ -18,7 +21,7 @@ const argv = require('minimist')(process.argv.slice(2), {
   }
 });
 
-const version = () => `delete-empty ${cyan(`v${require('../package').version}`)}`;
+const version = () => `delete-empty ${cyan(`v${pkg.version}`)}`;
 
 const help = () => `
   Path: <${path.dirname(__dirname)}>
@@ -48,13 +51,20 @@ if (argv.version) {
 }
 
 console.log(bold(version()));
-const ok = green(symbols.check);
 const dir = argv._[0] || argv.cwd;
 const cwd = dir ? path.resolve(dir) : process.cwd();
 
 deleteEmpty(cwd, argv)
   .then(({ deleted }) => {
-    console.log(ok, 'Deleted', deleted.length, 'empty directories');
+    console.log('deleted', deleted.length, 'empty directories');
+
+    const usage = process.memoryUsage();
+    console.log('memory usage:');
+
+    for (const [key, value] of Object.entries(usage)) {
+      console.log(`  ${key} ${Math.round(value / 1024 / 1024 * 100) / 100} MB`);
+    }
+
     process.exit();
   })
   .catch(err => {

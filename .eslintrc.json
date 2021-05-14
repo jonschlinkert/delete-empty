@@ -9,6 +9,7 @@
   },
 
   "parserOptions": {
+    "sourceType": "module",
     "ecmaVersion": 12
   },
 

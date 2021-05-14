@@ -4,31 +4,29 @@
  * Released under the MIT License.
  */
 
-'use strict';
+import fs from 'fs';
+import path from 'path';
+import util from 'util';
+import rimraf from 'rimraf';
+import startsWith from 'path-starts-with';
+import { is as isJunk } from 'junk';
+import systemPathRegex from './lib/system-path-regex.js';
 
-const kDirname = Symbol('dirname');
 const kIgnored = Symbol('ignored');
-
-const fs = require('fs');
-const path = require('path');
-const util = require('util');
-const rimraf = require('rimraf');
-const startsWith = require('path-starts-with');
-const { is: isJunk } = require('junk');
-const systemPathRegex = require('./lib/system-path-regex');
+const kDirname = Symbol('dirname');
 
 const normalize = filepath => path.normalize(filepath.split(/[\\/]/).join(path.sep));
 
 const isIgnored = (dirname, options = {}) => {
-  const dir = normalize(dirname);
-  const parent = path.dirname(dir);
+  const basedir = normalize(dirname);
+  const parent = path.dirname(basedir);
 
-  if (parent === dir) {
+  if (parent === basedir) {
     return true;
   }
 
   if (typeof options.ignore === 'function') {
-    return options.ignore(dir);
+    return options.ignore(basedir);
   }
 
   if (options.ignore === false) {
@@ -38,57 +36,52 @@ const isIgnored = (dirname, options = {}) => {
   const cache = deleteEmpty.cache;
   const key = options.ignore ? [].concat(options.ignore).flat().join(',') : kIgnored;
   const regex = cache[key] || (cache[key] = systemPathRegex(parent, options.ignore, options));
-  return regex.test(dir);
+  return regex.test(basedir);
 };
 
-const deleteEmpty = async (dir, options = {}, cb) => {
-  if (typeof options === 'function') {
-    cb = options;
-    options = {};
+const deleteEmpty = async (basedir, options = {}) => {
+  if (!path.isAbsolute(basedir)) {
+    basedir = path.resolve(basedir);
   }
 
-  if (typeof cb === 'function') {
-    deleteEmpty(dir, options).then(state => cb(null, state)).catch(cb);
-    return;
-  }
-
-  if (!path.isAbsolute(dir)) {
-    dir = path.resolve(dir);
-  }
-
-  const opts = { [kDirname]: dir, ...options };
+  const opts = { [kDirname]: basedir, ...options, glob: false };
   const isGarbage = options.isJunk || isJunk;
   const del = options.dryRun ? async () => undefined : util.promisify(rimraf);
   const state = { deleted: [], children: 0 };
-  const pending = [];
+  const pending = new Set();
 
-  const isRoot = () => normalize(opts[kDirname]) === normalize(dir);
-  const isInsideRoot = () => !isRoot() && startsWith(dir, opts[kDirname]) && dir !== opts[kDirname];
+  const push = promise => {
+    const p = promise.then(() => pending.delete(p));
+    pending.add(p);
+  };
 
-  if (isIgnored(dir, options)) {
+  const isRoot = () => normalize(opts[kDirname]) === normalize(basedir);
+  const isInsideRoot = () => !isRoot() && startsWith(basedir, opts[kDirname]) && basedir !== opts[kDirname];
+
+  if (isIgnored(basedir, options)) {
     return state;
   }
 
-  if (fs.existsSync(path.join(dir, '.gitkeep'))) {
+  if (fs.existsSync(path.join(basedir, '.gitkeep'))) {
     return state;
   }
 
   return new Promise((resolve, reject) => {
-    fs.readdir(dir, { withFileTypes: true }, async (err, files) => {
+    fs.readdir(basedir, { withFileTypes: true }, async (err, files) => {
       if (err) {
         reject(err);
         return;
       }
 
       for (const file of files) {
-        file.path = path.resolve(dir, file.name);
+        file.path = path.resolve(basedir, file.name);
 
         if (isIgnored(file.path)) {
           continue;
         }
 
         if (isGarbage(file.name)) {
-          if (options.dryRun !== true) pending.push(del(file.path, { ...options, glob: false }));
+          if (options.dryRun !== true) push(del(file.path, opts));
           continue;
         }
 
@@ -106,7 +99,7 @@ const deleteEmpty = async (dir, options = {}, cb) => {
             return file;
           });
 
-          pending.push(promise);
+          push(promise);
         }
       }
 
@@ -114,11 +107,11 @@ const deleteEmpty = async (dir, options = {}, cb) => {
 
       if (state.children === 0) {
         if (((isRoot() && options.force === true || options.deleteRoot === true) || isInsideRoot())) {
-          const promise = del(dir, { ...options, glob: false }).then(() => {
-            state.deleted.push(dir);
+          const promise = del(basedir, opts).then(() => {
+            state.deleted.push(basedir);
           });
 
-          pending.push(promise);
+          push(promise);
         }
       }
 
@@ -127,38 +120,36 @@ const deleteEmpty = async (dir, options = {}, cb) => {
   });
 };
 
-deleteEmpty.sync = (dir, options = {}) => {
-  if (!path.isAbsolute(dir)) {
-    dir = path.resolve(dir);
+export const deleteEmptySync = (basedir, options = {}) => {
+  if (!path.isAbsolute(basedir)) {
+    basedir = path.resolve(basedir);
   }
 
-  const opts = { ...options };
-  if (!opts[kDirname]) opts[kDirname] = dir;
-
+  const opts = { [kDirname]: basedir, ...options, glob: false };
   const delSync = options.dryRun ? () => {} : rimraf.sync;
   const state = { deleted: [], children: 0 };
   const isGarbage = options.isJunk || isJunk;
 
-  const isRoot = () => opts[kDirname] === dir;
-  const isInsideRoot = () => !isRoot() && startsWith(dir, opts[kDirname]) && dir !== opts[kDirname];
+  const isRoot = () => opts[kDirname] === basedir;
+  const isInsideRoot = () => !isRoot() && startsWith(basedir, opts[kDirname]) && basedir !== opts[kDirname];
 
-  if (isIgnored(dir, options)) {
+  if (isIgnored(basedir, options)) {
     return state;
   }
 
-  if (fs.existsSync(path.join(dir, '.gitkeep'))) {
+  if (fs.existsSync(path.join(basedir, '.gitkeep'))) {
     return state;
   }
 
-  for (const file of fs.readdirSync(dir, { withFileTypes: true })) {
-    file.path = path.resolve(dir, file.name);
+  for (const file of fs.readdirSync(basedir, { withFileTypes: true })) {
+    file.path = path.resolve(basedir, file.name);
 
     if (isIgnored(file.path)) {
       continue;
     }
 
     if (isGarbage(file.name)) {
-      if (options.dryRun !== true) delSync(file.path, { ...options, glob: false });
+      if (options.dryRun !== true) delSync(file.path, opts);
       continue;
     }
 
@@ -178,8 +169,8 @@ deleteEmpty.sync = (dir, options = {}) => {
 
   if (state.children === 0) {
     if ((isRoot() && (options.force === true || options.deleteRoot === true)) || isInsideRoot()) {
-      delSync(dir, { ...options, glob: false });
-      state.deleted.push(dir);
+      delSync(basedir, opts);
+      state.deleted.push(basedir);
     }
   }
 
@@ -187,4 +178,5 @@ deleteEmpty.sync = (dir, options = {}) => {
 };
 
 deleteEmpty.cache = {};
-module.exports = deleteEmpty;
+deleteEmpty.sync = deleteEmptySync;
+export default deleteEmpty;

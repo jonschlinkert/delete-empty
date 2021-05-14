@@ -19,12 +19,13 @@
     "lib",
     "index.js"
   ],
-  "main": "index.js",
+  "type": "module",
+  "export": "./index.js",
   "bin": {
     "delete-empty": "bin/cli.js"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=12"
   },
   "scripts": {
     "test": "mocha"
@@ -48,23 +49,29 @@
     "clean",
     "clear",
     "del",
-    "delete",
     "delete-empty",
+    "delete",
     "dir",
+    "directories",
     "directory",
     "empty",
     "files",
     "folder",
     "fs",
+    "garbage",
     "is-empty",
+    "junk",
     "readdir",
     "readdirSync",
     "recurse",
     "recursive",
+    "remove-empty-directories",
+    "remove-empty",
     "remove",
     "rimraf",
     "rm",
-    "rmdir"
+    "rmdir",
+    "trash"
   ],
   "update": {
     "run": [],

@@ -8,7 +8,6 @@ Please consider following this project's author, [Jon Schlinkert](https://github
 - [Usage](#usage)
 - [API](#api)
   * [async-await (promise)](#async-await-promise)
-  * [async callback](#async-callback)
   * [sync](#sync)
 - [CLI](#cli)
 - [About](#about)
@@ -27,6 +26,7 @@ $ npm install --save delete-empty
 
 ```js
 const deleteEmpty = require('delete-empty');
+import deleteEmpty from 'delete-empty';
 ```
 
 ## API
@@ -48,36 +48,26 @@ foo/
 
 ### async-await (promise)
 
-If no callback is passed, a promise is returned. Returns the array of deleted directories.
+Returns a promise that returns an object with the array of deleted directories.
 
 ```js
 (async () => {
-  const deleted = await deleteEmpty('foo');
+  const { deleted } = await deleteEmpty('foo');
   console.log(deleted); //=> ['foo/aa/', 'foo/a/cc/', 'foo/b/', 'foo/c/']
 })();
 
 // or
 deleteEmpty('foo/')
-  .then(deleted => console.log(deleted)) //=> ['foo/aa/', 'foo/a/cc/', 'foo/b/', 'foo/c/']
+  .then(({ deleted }) => console.log(deleted)) //=> ['foo/aa/', 'foo/a/cc/', 'foo/b/', 'foo/c/']
   .catch(console.error);
-```
-
-### async callback
-
-Returns the array of deleted directories in the callback.
-
-```js
-deleteEmpty('foo/', (err, deleted) => {
-  console.log(deleted); //=> ['foo/aa/', 'foo/a/cc/', 'foo/b/', 'foo/c/']
-});
 ```
 
 ### sync
 
-Returns the array of deleted directories.
+Returns an object with the array of deleted directories.
 
 ```js
-console.log(deleteEmpty.sync('foo/')); //=> ['foo/aa/', 'foo/a/cc/', 'foo/b/', 'foo/c/']
+console.log(deleteEmpty.sync('foo/')); //=> { deleted: ['foo/aa/', 'foo/a/cc/', 'foo/b/', 'foo/c/'] }
 ```
 
 ## CLI
@@ -149,13 +139,14 @@ You might also be interested in these projects:
 
 ### Contributors
 
-| **Commits** | **Contributor** |
-| --- | --- |
-| 34 | [jonschlinkert](https://github.com/jonschlinkert) |
-| 2  | [treble-snake](https://github.com/treble-snake) |
-| 1  | [doowb](https://github.com/doowb) |
-| 1  | [svenschoenung](https://github.com/svenschoenung) |
-| 1  | [vpalmisano](https://github.com/vpalmisano) |
+| **Commits** | **Contributor** |  
+| --- | --- |  
+| 35 | [jonschlinkert](https://github.com/jonschlinkert) |  
+| 2  | [treble-snake](https://github.com/treble-snake) |  
+| 1  | [doowb](https://github.com/doowb) |  
+| 1  | [Ronald-Baars](https://github.com/Ronald-Baars) |  
+| 1  | [svenschoenung](https://github.com/svenschoenung) |  
+| 1  | [vpalmisano](https://github.com/vpalmisano) |  
 
 ### Author
 

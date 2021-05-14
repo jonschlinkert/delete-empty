@@ -1,18 +1,19 @@
-'use strict';
+import fs from 'fs';
+import path from 'path';
+import util from 'util';
+import readdir from '@folder/readdir';
+import assert from 'assert';
+import _rimraf from 'rimraf';
+import copy from './support/copy.js';
+import dirs from './support/system-dirs.js';
+import deleteEmpty from '../index.js';
 
-require('mocha');
-const fs = require('fs');
-const path = require('path');
-const util = require('util');
-const readdir = require('@folder/readdir');
-const assert = require('assert');
-const rimraf = util.promisify(require('rimraf'));
-const deleteEmpty = require('..');
-const copy = require('./support/copy');
-const dirs = require('./support/system-dirs');
+const parsed = new URL(import.meta.url);
+const dirname = path.dirname(parsed.pathname);
 
+const rimraf = util.promisify(_rimraf);
 const systemDirs = dirs[process.platform];
-const fixtures = path.join.bind(path, __dirname, 'fixtures');
+const fixtures = path.join.bind(path, dirname, 'fixtures');
 const expected = [
   fixtures('temp/a/aa/aaa'),
   fixtures('temp/a/aa/aaa/aaaa'),
@@ -20,10 +21,10 @@ const expected = [
   fixtures('temp/c')
 ];
 
-const addFixtures = filepath => copy(filepath, fixtures('temp'));
-const addSystemPaths = async () => {
+const addFixtures = destdir => copy(destdir, fixtures('temp'));
+const addFakeSystemPaths = async () => {
   for (const dir of systemDirs) {
-    await fs.promises.mkdir(fixtures(`temp/system/${dir}`), { recursive: true });
+    await fs.promises.mkdir(fixtures('temp/system', dir), { recursive: true });
   }
 };
 
@@ -33,8 +34,6 @@ let folders;
 
 describe('deleteEmpty', () => {
   before(async () => await rimraf(fixtures('temp')));
-  afterEach(async () => await rimraf(fixtures('temp')));
-
   beforeEach(async () => {
     await addFixtures(fixtures('paths'));
     const nested = fixtures('temp/nested');
@@ -42,6 +41,8 @@ describe('deleteEmpty', () => {
     if (!folders.includes(nested)) folders.push(nested);
     folders.sort();
   });
+
+  afterEach(async () => await rimraf(fixtures('temp')));
 
   describe('promise', cb => {
     it('should delete the given cwd if empty', () => {
@@ -78,13 +79,14 @@ describe('deleteEmpty', () => {
     });
 
     it('should ignore system paths', async () => {
-      await addSystemPaths();
+      await addFakeSystemPaths();
 
       return deleteEmpty(fixtures('temp'))
         .then(async ({ deleted }) => {
           for (const dir of systemDirs) {
-            assert(fs.existsSync(fixtures(`temp/system/${dir}`)));
+            assert(fs.existsSync(fixtures('temp/system', dir)));
           }
+
           await rimraf(fixtures('temp/system'));
           assert.deepEqual(noNested(deleted).sort(), expected.sort());
         });
@@ -127,81 +129,6 @@ describe('deleteEmpty', () => {
             assert(fs.existsSync(folder));
           }
         });
-    });
-  });
-
-  describe('async', () => {
-    it('should delete the given cwd if empty', cb => {
-      deleteEmpty(fixtures('temp/b'), { force: true }, (err, { deleted }) => {
-        if (err) {
-          cb(err);
-          return;
-        }
-        assert(!fs.existsSync(fixtures('temp/b')));
-        cb();
-      });
-    });
-
-    it('should delete nested directories', cb => {
-      deleteEmpty(fixtures('temp'), (err, { deleted }) => {
-        if (err) {
-          cb(err);
-          return;
-        }
-        assert(!fs.existsSync(fixtures('temp/a/aa/aaa')));
-        assert(!fs.existsSync(fixtures('temp/b')));
-        assert(!fs.existsSync(fixtures('temp/c')));
-        cb();
-      });
-    });
-
-    it('should return the array of deleted directories', cb => {
-      deleteEmpty(fixtures('temp'), (err, { deleted }) => {
-        if (err) {
-          cb(err);
-          return;
-        }
-        assert.deepEqual(noNested(deleted).sort(), expected.sort());
-        cb();
-      });
-    });
-  });
-
-  describe('async - options.dryRun', () => {
-    it('should not delete the given cwd if empty', cb => {
-      deleteEmpty(fixtures('temp/b'), { dryRun: true }, (err, { deleted }) => {
-        if (err) {
-          cb(err);
-          return;
-        }
-        assert(fs.existsSync(fixtures('temp/b')));
-        cb();
-      });
-    });
-
-    it('should not delete nested directories', cb => {
-      deleteEmpty(fixtures('temp'), { dryRun: true }, (err, { deleted }) => {
-        if (err) {
-          cb(err);
-          return;
-        }
-        assert(fs.existsSync(fixtures('temp/a/aa/aaa')));
-        assert(fs.existsSync(fixtures('temp/b')));
-        assert(fs.existsSync(fixtures('temp/c')));
-        cb();
-      });
-    });
-
-    it('should return the array of empty directories', cb => {
-      deleteEmpty(fixtures('temp'), { dryRun: true }, (err, { deleted }) => {
-        if (err) {
-          cb(err);
-          return;
-        }
-
-        assert.deepEqual(noNested(deleted).sort(), expected.sort());
-        cb();
-      });
     });
   });
 

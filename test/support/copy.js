@@ -1,11 +1,9 @@
-'use strict';
+import fs from 'fs';
+import path from 'path';
+import readdir from '@folder/readdir';
+import write from 'write';
 
-const fs = require('fs');
-const path = require('path');
-const readdir = require('@folder/readdir');
-const write = require('write');
-
-module.exports = async (cwd, destDir) => {
+const copy = async (cwd, destDir) => {
   const files = [];
 
   const createDest = file => path.resolve(destDir, path.relative(cwd, file.path));
@@ -29,3 +27,5 @@ module.exports = async (cwd, destDir) => {
   await readdir(cwd, { recursive: true, absolute: true, onDirectory, onFile });
   return files;
 };
+
+export default copy;
