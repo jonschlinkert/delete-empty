@@ -6,19 +6,26 @@ const readdir = require('@folder/readdir');
 const write = require('write');
 
 module.exports = async (cwd, destDir) => {
-  const filter = file => file.name !== '.gitkeep';
-  const files = await readdir(cwd, { recursive: true, objects: true, absolute: true, filter });
+  const files = [];
 
-  for (let file of files) {
-    let destPath = path.resolve(destDir, path.relative(cwd, file.path));
-    if (fs.existsSync(destPath)) continue;
+  const createDest = file => path.resolve(destDir, path.relative(cwd, file.path));
+  const onDirectory = file => {
+    file.dest = createDest(file);
+    fs.mkdirSync(file.dest, { recursive: true });
+    files.push(file);
+  };
 
-    if (file.isDirectory()) {
-      fs.mkdirSync(destPath, { recursive: true });
-    } else {
-      write.sync(destPath, fs.readFileSync(file.path));
+  const onFile = file => {
+    if (file.name === '.DS_Store' || file.name === '.gitkeep') return;
+
+    file.dest = createDest(file);
+
+    if (!fs.existsSync(file.dest)) {
+      files.push(file);
+      write.sync(file.dest, fs.readFileSync(file.path));
     }
-  }
+  };
 
+  await readdir(cwd, { recursive: true, absolute: true, onDirectory, onFile });
   return files;
 };

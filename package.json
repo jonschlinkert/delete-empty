@@ -16,12 +16,12 @@
   "license": "MIT",
   "files": [
     "bin",
+    "lib",
     "index.js"
   ],
   "main": "index.js",
   "bin": {
-    "delete-empty": "bin/cli.js",
-    "empty": "bin/cli.js"
+    "delete-empty": "bin/cli.js"
   },
   "engines": {
     "node": ">=10"
@@ -31,30 +31,45 @@
   },
   "dependencies": {
     "ansi-colors": "^4.1.1",
+    "junk": "^3.1.0",
     "minimist": "^1.2.5",
     "path-starts-with": "^2.0.0",
     "picomatch": "^2.2.2",
     "rimraf": "^3.0.2"
   },
   "devDependencies": {
-    "@folder/readdir": "^2.1.0",
+    "@folder/readdir": "^3.1.0",
     "braces": "^3.0.2",
     "gulp-format-md": "^2.0.0",
-    "mocha": "^8.3.1",
+    "mocha": "^8.4.0",
     "write": "^2.0.0"
   },
   "keywords": [
+    "clean",
+    "clear",
     "del",
     "delete",
+    "delete-empty",
     "dir",
     "directory",
     "empty",
     "files",
     "folder",
+    "fs",
+    "is-empty",
+    "readdir",
+    "readdirSync",
     "recurse",
     "recursive",
-    "remove"
+    "remove",
+    "rimraf",
+    "rm",
+    "rmdir"
   ],
+  "update": {
+    "run": [],
+    "tasks": []
+  },
   "verb": {
     "run": true,
     "toc": true,
@@ -63,7 +78,9 @@
       "readme"
     ],
     "reflinks": [
-      "verb"
+      "verb",
+      "options",
+      "verb-generate-readme"
     ],
     "plugins": [
       "gulp-format-md"
@@ -72,21 +89,12 @@
       "list": [
         "copy",
         "delete",
-        "fs-utils",
+        "micromatch",
         "matched"
       ]
     },
     "lint": {
       "reflinks": true
-    }
-  },
-  "lintDeps": {
-    "devDependencies": {
-      "files": {
-        "patterns": [
-          "tree.js"
-        ]
-      }
     }
   }
 }

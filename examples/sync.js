@@ -1,12 +1,18 @@
 'use strict';
 
-var copy = require('../test/support/copy');
-var deleteEmpty = require('..');
+const path = require('path');
+const rimraf = require('rimraf');
+const copy = require('../test/support/copy');
+const deleteEmpty = require('..');
 
-copy('test/fixtures', 'test/temp', function(err) {
-  if (err) return console.log(err);
-  console.log('copied fixtures');
+const temp = path.join(__dirname, 'temp');
 
-  var deleted = deleteEmpty.sync('test/temp');
-  console.log('deleted', deleted);
-});
+copy('test/fixtures', temp)
+  .then(() => {
+    const deleted = deleteEmpty.sync(temp);
+    console.log('deleted', deleted);
+    rimraf.sync(temp, { glob: false });
+  })
+  .catch(err => {
+    console.log(err);
+  });

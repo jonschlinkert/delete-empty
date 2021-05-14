@@ -32,11 +32,14 @@ const filter = file => file.isDirectory();
 let folders;
 
 describe('deleteEmpty', () => {
+  before(async () => await rimraf(fixtures('temp')));
   afterEach(async () => await rimraf(fixtures('temp')));
 
   beforeEach(async () => {
     await addFixtures(fixtures('paths'));
-    folders = readdir.sync(fixtures('temp/nested'), { filter, recursive: true, absolute: true });
+    const nested = fixtures('temp/nested');
+    folders = readdir.sync(nested, { filter, recursive: true, absolute: true });
+    if (!folders.includes(nested)) folders.push(nested);
     folders.sort();
   });
 
