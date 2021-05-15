@@ -6,7 +6,7 @@ import write from 'write';
 const copy = async (cwd, destDir) => {
   const files = [];
 
-  const createDest = file => path.resolve(destDir, path.relative(cwd, file.path));
+  const createDest = file => path.join(destDir, path.relative(cwd, file.path));
   const onDirectory = file => {
     file.dest = createDest(file);
     fs.mkdirSync(file.dest, { recursive: true });
