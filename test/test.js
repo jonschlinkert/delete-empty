@@ -13,6 +13,10 @@ const dirname = path.dirname(parsed.pathname);
 
 const rimraf = util.promisify(_rimraf);
 const systemDirs = dirs[process.platform];
+
+const sysFolders = { darwin: 'usr', linux: 'sbin', win32: 'System32' };
+const sysFolder = sysFolders[process.platform] || sysFolders.linux;
+
 const fixtures = path.join.bind(path, dirname, 'fixtures');
 const expected = [
   fixtures('temp/a/aa/aaa'),
@@ -24,7 +28,7 @@ const expected = [
 const addFixtures = destdir => copy(destdir, fixtures('temp'));
 const addFakeSystemPaths = async () => {
   for (const dir of systemDirs) {
-    await fs.promises.mkdir(fixtures('temp/system', dir), { recursive: true });
+    await fs.promises.mkdir(fixtures('temp', sysFolder, dir), { recursive: true });
   }
 };
 
@@ -84,10 +88,10 @@ describe('deleteEmpty', () => {
       return deleteEmpty(fixtures('temp'))
         .then(async ({ deleted }) => {
           for (const dir of systemDirs) {
-            assert(fs.existsSync(fixtures('temp/system', dir)));
+            assert(fs.existsSync(fixtures('temp', sysFolder, dir)));
           }
 
-          await rimraf(fixtures('temp/system'));
+          await rimraf(fixtures('temp', sysFolder));
           assert.deepEqual(noNested(deleted).sort(), expected.sort());
         });
     });
