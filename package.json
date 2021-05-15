@@ -16,42 +16,67 @@
   "license": "MIT",
   "files": [
     "bin",
+    "lib",
     "index.js"
   ],
-  "main": "index.js",
+  "type": "module",
+  "export": "./index.js",
   "bin": {
     "delete-empty": "bin/cli.js"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=12"
   },
   "scripts": {
     "test": "mocha"
   },
   "dependencies": {
-    "ansi-colors": "^4.1.0",
-    "minimist": "^1.2.0",
+    "ansi-colors": "^4.1.1",
+    "junk": "^3.1.0",
+    "minimist": "^1.2.5",
     "path-starts-with": "^2.0.0",
-    "rimraf": "^2.6.2"
+    "picomatch": "^2.2.2",
+    "rimraf": "^3.0.2"
   },
   "devDependencies": {
-    "@folder/readdir": "^2.0.0",
-    "gulp-format-md": "^1.0.0",
-    "mocha": "^3.5.3",
-    "write": "^1.0.3"
+    "@folder/readdir": "^3.1.0",
+    "braces": "^3.0.2",
+    "gulp-format-md": "^2.0.0",
+    "mocha": "^8.4.0",
+    "write": "^2.0.0"
   },
   "keywords": [
+    "clean",
+    "clear",
     "del",
+    "delete-empty",
     "delete",
     "dir",
+    "directories",
     "directory",
     "empty",
     "files",
     "folder",
+    "fs",
+    "garbage",
+    "is-empty",
+    "junk",
+    "readdir",
+    "readdirSync",
     "recurse",
     "recursive",
-    "remove"
+    "remove-empty-directories",
+    "remove-empty",
+    "remove",
+    "rimraf",
+    "rm",
+    "rmdir",
+    "trash"
   ],
+  "update": {
+    "run": [],
+    "tasks": []
+  },
   "verb": {
     "run": true,
     "toc": true,
@@ -60,7 +85,9 @@
       "readme"
     ],
     "reflinks": [
-      "verb"
+      "verb",
+      "options",
+      "verb-generate-readme"
     ],
     "plugins": [
       "gulp-format-md"
@@ -69,21 +96,12 @@
       "list": [
         "copy",
         "delete",
-        "fs-utils",
+        "micromatch",
         "matched"
       ]
     },
     "lint": {
       "reflinks": true
-    }
-  },
-  "lintDeps": {
-    "devDependencies": {
-      "files": {
-        "patterns": [
-          "tree.js"
-        ]
-      }
     }
   }
 }

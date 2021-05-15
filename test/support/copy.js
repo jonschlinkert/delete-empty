@@ -1,24 +1,31 @@
-'use strict';
+import fs from 'fs';
+import path from 'path';
+import readdir from '@folder/readdir';
+import write from 'write';
 
-const fs = require('fs');
-const path = require('path');
-const readdir = require('@folder/readdir');
-const write = require('write');
+const copy = async (cwd, destDir) => {
+  const files = [];
 
-module.exports = async (cwd, destDir) => {
-  const filter = file => file.name !== '.gitkeep';
-  const files = await readdir(cwd, { recursive: true, objects: true, absolute: true, filter });
+  const createDest = file => path.join(destDir, path.relative(cwd, file.path));
+  const onDirectory = file => {
+    file.dest = createDest(file);
+    fs.mkdirSync(file.dest, { recursive: true });
+    files.push(file);
+  };
 
-  for (let file of files) {
-    let destPath = path.resolve(destDir, path.relative(cwd, file.path));
-    if (fs.existsSync(destPath)) continue;
+  const onFile = file => {
+    if (file.name === '.DS_Store' || file.name === '.gitkeep') return;
 
-    if (file.isDirectory()) {
-      fs.mkdirSync(destPath, { recursive: true });
-    } else {
-      write.sync(destPath, fs.readFileSync(file.path));
+    file.dest = createDest(file);
+
+    if (!fs.existsSync(file.dest)) {
+      files.push(file);
+      write.sync(file.dest, fs.readFileSync(file.path));
     }
-  }
+  };
 
+  await readdir(cwd, { recursive: true, absolute: true, onDirectory, onFile });
   return files;
 };
+
+export default copy;
