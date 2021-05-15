@@ -9,7 +9,7 @@ import path from 'path';
 import util from 'util';
 import rimraf from 'rimraf';
 import startsWith from 'path-starts-with';
-import { is as isJunk } from 'junk';
+import junk from 'junk';
 import systemPathRegex from './lib/system-path-regex.js';
 
 const kIgnored = Symbol('ignored');
@@ -45,7 +45,7 @@ const deleteEmpty = async (basedir, options = {}) => {
   }
 
   const opts = { [kDirname]: basedir, ...options, glob: false };
-  const isGarbage = options.isJunk || isJunk;
+  const isGarbage = options.isJunk || junk.is;
   const del = options.dryRun ? async () => undefined : util.promisify(rimraf);
   const state = { deleted: [], children: 0 };
   const pending = new Set();
@@ -128,7 +128,7 @@ export const deleteEmptySync = (basedir, options = {}) => {
   const opts = { [kDirname]: basedir, ...options, glob: false };
   const delSync = options.dryRun ? () => {} : rimraf.sync;
   const state = { deleted: [], children: 0 };
-  const isGarbage = options.isJunk || isJunk;
+  const isGarbage = options.isJunk || junk.is;
 
   const isRoot = () => opts[kDirname] === basedir;
   const isInsideRoot = () => !isRoot() && startsWith(basedir, opts[kDirname]) && basedir !== opts[kDirname];
